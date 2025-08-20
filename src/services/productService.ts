@@ -1,6 +1,6 @@
 import { type Product, type NewProduct } from '../db';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = '/api';
 
 export const productService = {
   // Get all products
