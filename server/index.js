@@ -51,7 +51,7 @@ const authenticateToken = (req, res, next) => {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'https://seen-gamma.vercel.app/', 'https://seen-git-main-giorgis-projects-80a3ab63.vercel.app/', 'seen-pf4v9au5w-giorgis-projects-80a3ab63.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -777,7 +777,9 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`API endpoints available at http://localhost:${PORT}/api/products`);
-});
+// /app.listen(PORT, () => {
+//   console.log(`Server running on http://localhost:${PORT}`);
+//   console.log(`API endpoints available at http://localhost:${PORT}/api/products`);
+// });
+
+export default app;
