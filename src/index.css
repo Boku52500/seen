@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'AlkSanet';
+  src: url('/assets/alk-sanet.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+html {
+  overflow-y: scroll;
+}
+
+body {
+  font-family: 'AlkSanet', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  * {
+    font-family: 'AlkSanet' !important;
+  }
+}
+
+/* Custom dual range slider styles */
+.slider-thumb {
+  background: transparent;
+  pointer-events: auto;
+}
+
+.slider-thumb::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #000000;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.slider-thumb::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #000000;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.slider-thumb::-webkit-slider-track {
+  background: transparent;
+  border: none;
+}
+
+.slider-thumb::-moz-range-track {
+  background: transparent;
+  border: none;
+}
+
+

@@ -1,0 +1,84 @@
+import React, { useState, useEffect } from 'react';
+import { Instagram } from 'lucide-react';
+
+interface InstagramGalleryProps {
+  urls?: string[];
+}
+
+const InstagramGallery: React.FC<InstagramGalleryProps> = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  const staticImages = [
+    "/assets/1.jpeg",
+    "/assets/2.jpeg", 
+    "/assets/3.jpg",
+    "/assets/4.jpeg"
+  ];
+
+  const imageLinks = [
+    "https://www.instagram.com/p/DMAOlI6oqBj/?img_index=1",
+    "https://www.instagram.com/p/DMfCoViI9oT/?img_index=1",
+    "https://www.instagram.com/p/DL5FcAMI4bN/?img_index=1",
+    "https://www.instagram.com/p/DNY0pVGMRaz/?img_index=1"
+  ];
+
+  return (
+    <div className="pt-12">
+      {/* Minimalistic Header */}
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center space-x-3 mb-2">
+          <Instagram className="w-5 h-5 text-gray-600" />
+          <h2 className="text-2xl font-light text-gray-800">Follow Us</h2>
+        </div>
+        <a 
+          href="https://www.instagram.com/sseenstudios/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-gray-600 hover:text-gray-800 transition-colors duration-300"
+        >
+          @sseenstudios
+        </a>
+      </div>
+      
+      {/* Full-width Instagram Grid */}
+      <div className="w-full">
+        {/* Mobile: 2x2 Grid, Desktop: 3 in a row */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-0">
+          {/* Desktop: Show first 3 images, Mobile: Show all 4 images */}
+          {staticImages.map((imageUrl, index) => {
+            // On desktop, only show first 3 images
+            if (index >= 3 && !isMobile) return null;
+            
+            const linkUrl = imageLinks[index];
+            return (
+              <div key={index} className="relative group overflow-hidden">
+                <img 
+                  src={imageUrl} 
+                  alt="Instagram Post" 
+                  className="w-full h-auto transition-opacity duration-300 group-hover:opacity-90" 
+                />
+                <a href={linkUrl} target="_blank" rel="noopener noreferrer">
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                    <Instagram className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </div>
+                </a>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default InstagramGallery;
