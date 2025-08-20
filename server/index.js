@@ -51,7 +51,13 @@ const authenticateToken = (req, res, next) => {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'https://seen-gamma.vercel.app/', 'https://seen-git-main-giorgis-projects-80a3ab63.vercel.app/', 'seen-pf4v9au5w-giorgis-projects-80a3ab63.vercel.app'],
+  origin: [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://seen-gamma.vercel.app',
+    'https://seen-git-main-giorgis-projects-80a3ab63.vercel.app',
+    'https://seen-pf4v9au5w-giorgis-projects-80a3ab63.vercel.app'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -69,6 +75,11 @@ app.use((req, res, next) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Server is running' });
+});
+
+// Alias so it works when called via Vercel /api/*
+app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
@@ -617,9 +628,9 @@ app.get('/api/products/search/:searchTerm', async (req, res) => {
         and(
           eq(products.is_active, true),
           or(
-            like(products.name, `%${searchTerm}%`),
-            like(products.description, `%${searchTerm}%`),
-            like(products.category, `%${searchTerm}%`)
+            ilike(products.name, `%${searchTerm}%`),
+            ilike(products.description, `%${searchTerm}%`),
+            ilike(products.category, `%${searchTerm}%`)
           )
         )
       )
