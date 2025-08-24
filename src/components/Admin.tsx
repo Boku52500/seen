@@ -456,7 +456,7 @@ const Admin: React.FC = () => {
                         <input
                           ref={(el) => fileInputRefs.current[index] = el}
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
+                          accept="image/jpeg,image/png,image/webp,image/avif"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {

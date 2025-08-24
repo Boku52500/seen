@@ -7,6 +7,8 @@ export const storageService = {
   uploadImage: async (file: File, path: string): Promise<string> => {
     try {
       console.log('StorageService: Converting image to base64 for file:', file.name);
+      // Mark 'path' as intentionally unused for now (reserved for future storage backends)
+      void path;
       
       // Validate file size (max 5MB for base64 storage)
       const maxSize = 5 * 1024 * 1024; // 5MB
@@ -15,9 +17,9 @@ export const storageService = {
       }
 
       // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/avif'];
       if (!allowedTypes.includes(file.type)) {
-        throw new Error('Invalid file type. Please use JPEG, PNG, or WebP images.');
+        throw new Error('Invalid file type. Please use JPEG, PNG, WebP, or AVIF images.');
       }
 
       return new Promise((resolve, reject) => {
@@ -63,14 +65,14 @@ export const storageService = {
   // Validate image file before upload
   validateImage: (file: File): { valid: boolean; error?: string } => {
     const maxSize = 5 * 1024 * 1024; // 5MB
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/avif'];
 
     if (file.size > maxSize) {
       return { valid: false, error: 'Image file too large. Please use an image smaller than 5MB.' };
     }
 
     if (!allowedTypes.includes(file.type)) {
-      return { valid: false, error: 'Invalid file type. Please use JPEG, PNG, or WebP images.' };
+      return { valid: false, error: 'Invalid file type. Please use JPEG, PNG, WebP, or AVIF images.' };
     }
 
     return { valid: true };
