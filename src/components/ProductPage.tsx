@@ -19,6 +19,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, onBack, onBuyNow }) 
   const [showAddedToCart, setShowAddedToCart] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isProductDetailsExpanded, setIsProductDetailsExpanded] = useState(false);
+  const [isSizeChartExpanded, setIsSizeChartExpanded] = useState(false);
   const [loadingFavorite, setLoadingFavorite] = useState(false);
 
   const { addToCart } = useCart();
@@ -100,6 +101,21 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, onBack, onBuyNow }) 
       prev === 0 ? product.images.length - 1 : prev - 1
     );
   };
+
+  // Size chart handling
+  const normalizeGrid = (grid?: string[][]) => {
+    const base = Array.from({ length: 5 }, () => Array(5).fill('')) as string[][];
+    if (!Array.isArray(grid)) return base;
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        base[r][c] = grid?.[r]?.[c] ?? '';
+      }
+    }
+    return base;
+  };
+  const rawSizeChart = (product as any).size_chart as string[][] | undefined;
+  const sizeChartGrid = normalizeGrid(rawSizeChart);
+  const hasSizeChartContent = sizeChartGrid.some(row => row.some(cell => (cell || '').trim() !== ''));
 
   return (
     <div className="min-h-screen bg-white pt-20">
@@ -345,6 +361,45 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, onBack, onBuyNow }) 
                 </div>
               )}
             </div>
+
+            {/* Size Chart Dropdown */}
+            {hasSizeChartContent && (
+              <div className="border-t pt-6">
+                <button
+                  onClick={() => setIsSizeChartExpanded(!isSizeChartExpanded)}
+                  className="flex items-center justify-between w-full text-left"
+                >
+                  <h3 className="text-lg font-medium">Size Chart</h3>
+                  {isSizeChartExpanded ? (
+                    <ChevronUp size={20} className="text-gray-500" />
+                  ) : (
+                    <ChevronDown size={20} className="text-gray-500" />
+                  )}
+                </button>
+                {isSizeChartExpanded && (
+                  <div className="mt-4 overflow-auto">
+                    <table className="min-w-full border border-gray-300">
+                      <tbody>
+                        {sizeChartGrid.map((row, rIdx) => (
+                          <tr key={rIdx}>
+                            {row.map((cell, cIdx) => (
+                              <td
+                                key={cIdx}
+                                className={`border border-gray-300 p-2 text-sm text-gray-700 text-center ${
+                                  rIdx === 0 || cIdx === 0 ? 'font-semibold' : ''
+                                }`}
+                              >
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

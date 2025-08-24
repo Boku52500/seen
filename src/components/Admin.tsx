@@ -10,10 +10,23 @@ const Admin: React.FC = () => {
   const { products, loading, error, refreshProducts } = useProducts();
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const createEmptyGrid = () => Array.from({ length: 5 }, () => Array(5).fill('')) as string[][];
+  const normalizeGrid = (grid?: string[][]) => {
+    const base = Array.from({ length: 5 }, () => Array(5).fill('')) as string[][];
+    if (!Array.isArray(grid)) return base;
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        base[r][c] = grid?.[r]?.[c] ?? '';
+      }
+    }
+    return base;
+  };
+
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
     product_details: '',
+    size_chart: createEmptyGrid(),
     price: 0,
     images: [''],
     colors: [{ name: '', value: '#000000', imageIndex: undefined }],
@@ -29,6 +42,7 @@ const Admin: React.FC = () => {
       name: '',
       description: '',
       product_details: '',
+      size_chart: createEmptyGrid(),
       price: 0,
       images: [''],
       colors: [{ name: '', value: '#000000', imageIndex: undefined }],
@@ -116,6 +130,7 @@ const Admin: React.FC = () => {
       name: product.name,
       description: product.description || '',
       product_details: (product as any).product_details || '',
+      size_chart: normalizeGrid((product as any).size_chart),
       price: product.price,
       images: product.images.length > 0 ? product.images : [''],
       colors: product.colors.length > 0 ? product.colors : [{ name: '', value: '#000000', imageIndex: undefined }],
@@ -550,6 +565,50 @@ const Admin: React.FC = () => {
                       {size}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Size Chart (5x5) */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  Size Chart (5 x 5)
+                </label>
+                <div className="overflow-auto">
+                  <table className="min-w-full border border-gray-300">
+                    <tbody>
+                      {formData.size_chart?.map((row, rIdx) => (
+                        <tr key={rIdx}>
+                          {row.map((cell, cIdx) => (
+                            <td key={cIdx} className="border border-gray-300 p-1">
+                              <input
+                                type="text"
+                                value={cell}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setFormData(prev => {
+                                    const grid = normalizeGrid(prev.size_chart).map(r => [...r]);
+                                    grid[rIdx][cIdx] = value;
+                                    return { ...prev, size_chart: grid };
+                                  });
+                                }}
+                                className="w-24 px-2 py-1 border border-gray-200 rounded focus:outline-none focus:border-black text-sm"
+                                placeholder={rIdx === 0 ? (cIdx === 0 ? 'Header' : `H${cIdx}`) : ''}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, size_chart: createEmptyGrid() }))}
+                    className="text-sm px-3 py-1 border border-gray-300 rounded hover:border-black"
+                  >
+                    Clear Grid
+                  </button>
                 </div>
               </div>
 

@@ -60,6 +60,18 @@ async function runMigration() {
     } catch (error) {
       console.log('- user_addresses table creation error:', error.message);
     }
+
+    // Add size_chart column to products if it doesn't exist
+    try {
+      await sql`ALTER TABLE products ADD COLUMN size_chart json DEFAULT '[]'`;
+      console.log('✅ Added size_chart JSON column to products table');
+    } catch (error) {
+      if (error.message && error.message.includes('already exists')) {
+        console.log('ℹ️ size_chart column already exists in products table');
+      } else {
+        console.error('❌ Error adding size_chart column:', error.message || error);
+      }
+    }
     
     console.log('Migration applied successfully!');
     

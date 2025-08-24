@@ -1,5 +1,6 @@
 import React from 'react';
 import { Heart, Users, Award, Truck } from 'lucide-react';
+import LogoAbout from '/assets/logoabout.jpg';
 
 const AboutUs: React.FC = () => {
   return (
@@ -9,11 +10,10 @@ const AboutUs: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              About Our Story
+              About Us
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              We're passionate about creating beautiful, high-quality fashion that empowers women 
-              to feel confident and express their unique style.
+            Empowering women to own their confidence, embrace their femininity, and always be – SEEN
             </p>
           </div>
         </div>
@@ -24,23 +24,15 @@ const AboutUs: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-                Our Mission
-              </h2>
+              
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                Founded with a vision to revolutionize women's fashion, we believe that every woman 
-                deserves to feel beautiful and confident in what she wears. Our carefully curated 
-                collection combines contemporary design with timeless elegance.
+              At Seen Studios, we believe that true luxury is timeless. We don’t just design clothing — we pour our passion into every step of the process. We love what we do, and it shows in every stitch, fabric choice, and silhouette. We care deeply about our community — the people who inspire us, support us, and wear our pieces with pride. Our hope is that everyone who wears Seen feels confident, empowered, and truly Seen. Because to us, fashion lives in the details — in lasting pieces that hold meaning, evoke emotion, and become part of your story. We see each garment as a quality memory, made to stay with you — not just for a season, but forever.
               </p>
-              <p className="text-lg text-gray-600 leading-relaxed">
-                From elegant dresses to coordinated sets, each piece is thoughtfully designed 
-                and crafted with attention to detail, ensuring you look and feel your best 
-                for every occasion.
-              </p>
+              
             </div>
             <div className="relative">
               <div className="aspect-square bg-gradient-to-br from-pink-100 to-purple-100 rounded-2xl flex items-center justify-center">
-                <Heart className="w-24 h-24 text-pink-500" />
+                <img src={LogoAbout} alt="Seen Studios" className="aspect-square rounded-2xl flex items-center justify-center" />
               </div>
             </div>
           </div>

@@ -11,6 +11,7 @@ export const products = pgTable('products', {
   images: json('images').$type<string[]>().notNull().default([]),
   colors: json('colors').$type<Array<{ name: string; value: string; imageIndex?: number }>>().notNull().default([]),
   sizes: json('sizes').$type<string[]>().notNull().default([]),
+  size_chart: json('size_chart').$type<string[][]>().notNull().default([]),
   category: varchar('category', { length: 100 }).notNull(),
   is_active: boolean('is_active').default(true),
   created_at: timestamp('created_at').defaultNow(),

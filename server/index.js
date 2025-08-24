@@ -524,6 +524,7 @@ app.post('/api/products', async (req, res) => {
       name: productData.name,
       description: productData.description || null,
       product_details: productData.product_details || null,
+      size_chart: productData.size_chart || [],
       price: productData.price,
       images: productData.images || [],
       colors: productData.colors || [],
@@ -563,6 +564,7 @@ app.put('/api/products/:id', async (req, res) => {
       name: productData.name,
       description: productData.description || null,
       product_details: productData.product_details || null,
+      size_chart: productData.size_chart || [],
       price: productData.price,
       images: productData.images || [],
       colors: productData.colors || [],
@@ -787,10 +789,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Start server
-// /app.listen(PORT, () => {
-//   console.log(`Server running on http://localhost:${PORT}`);
-//   console.log(`API endpoints available at http://localhost:${PORT}/api/products`);
-// });
+// Start server locally (do not listen when running on Vercel serverless)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`API endpoints available at http://localhost:${PORT}/api/products`);
+  });
+}
 
 export default app;

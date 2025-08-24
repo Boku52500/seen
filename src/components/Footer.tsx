@@ -1,6 +1,6 @@
 import React from 'react';
 import { Instagram, Facebook, Twitter, Mail, MapPin, Phone, Heart, Truck, Award, Sparkles } from 'lucide-react';
-import LogoBlack from '/assets/logoblack.png';
+import LogoFooter from '/assets/logofooter.png';
 import { useAuth } from '../context/AuthContext';
 
 interface FooterProps {
@@ -43,10 +43,9 @@ export default function Footer({ onNavigateToFavorites }: FooterProps) {
           {/* Brand Section */}
           <div className="md:col-span-2">
             <div className="mb-6">
-              <img src={LogoBlack} alt="OddMuse" className="h-12 mb-4" />
+              <img src={LogoFooter} alt="OddMuse" className="h-24 mb-4" />
               <p className="text-gray-600 text-lg leading-relaxed max-w-md">
-                Discover unique fashion pieces that express your individual style. 
-                Where creativity meets elegance.
+              Empowering women to own their confidence, embrace their femininity, and always be – SEEN
               </p>
             </div>
             

@@ -33,20 +33,7 @@ const Contact: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white pt-20">
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-gray-50 to-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              Get In Touch
-            </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              We'd love to hear from you. Send us a message and we'll respond as soon as possible.
-            </p>
-          </div>
-        </div>
-      </div>
-
+      
       {/* Contact Information & Form */}
       <div className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -55,11 +42,10 @@ const Contact: React.FC = () => {
             {/* Contact Information */}
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-8">
-                Contact Information
+                Contact Us
               </h2>
               <p className="text-lg text-gray-600 mb-12 leading-relaxed">
-                Have questions about our products, need styling advice, or want to learn more about our brand? 
-                We're here to help and would love to connect with you.
+              We're Here for You At Seen Studios, we believe that great style should come with great service. From your first click to your final purchase (and beyond), we’re here to make your experience effortless and enjoyable. Need help choosing the right piece? Have a question about your order? Something not quite right? Our team is just a message away — ready to offer real, personalised support whenever you need it. Because at Seen, it’s not just about what you wear — it’s how you feel while wearing it. And we’re here to make sure you feel taken care of, every step of the way.
               </p>
 
               <div className="space-y-8">
@@ -74,39 +60,6 @@ const Contact: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Call Us</h3>
-                    <p className="text-gray-600">+1 (555) 123-4567</p>
-                    <p className="text-sm text-gray-500">Mon-Fri 9AM-6PM EST</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Visit Us</h3>
-                    <p className="text-gray-600">123 Fashion Street</p>
-                    <p className="text-gray-600">New York, NY 10001</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Clock className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Business Hours</h3>
-                    <p className="text-gray-600">Monday - Friday: 9:00 AM - 6:00 PM</p>
-                    <p className="text-gray-600">Saturday: 10:00 AM - 4:00 PM</p>
-                    <p className="text-gray-600">Sunday: Closed</p>
-                  </div>
-                </div>
               </div>
             </div>
 
