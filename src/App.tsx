@@ -11,6 +11,11 @@ import CartDrawer from './components/CartDrawer';
 import Navbar from './components/Navbar.tsx';
 import AboutUs from './components/AboutUs';
 import Contact from './components/Contact';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfService from './components/TermsOfService';
+import ReturnsPolicy from './components/ReturnsPolicy';
+import ShippingPolicy from './components/ShippingPolicy';
+import Footer from './components/Footer';
 import PageTransition from './components/PageTransition';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -212,7 +217,7 @@ function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <HeroPage onProductSelect={handleProductSelect} onNavigateToFavorites={handleNavigateToFavorites} />;
+        return <HeroPage onProductSelect={handleProductSelect} />;
       case 'admin':
         return <ProtectedAdmin />;
       case 'profile':
@@ -223,6 +228,14 @@ function App() {
         return <Shop onProductSelect={handleProductSelect} categoryFilter="Dresses" />;
       case 'sets':
         return <Shop onProductSelect={handleProductSelect} categoryFilter="Sets" />;
+      case 'privacy-policy':
+        return <PrivacyPolicy />;
+      case 'terms':
+        return <TermsOfService />;
+      case 'returns':
+        return <ReturnsPolicy />;
+      case 'shipping':
+        return <ShippingPolicy />;
       case 'product':
         if (loadingProduct) {
           return (
@@ -286,16 +299,19 @@ function App() {
       <ProductProvider>
         <CartProvider>
           <FavouritesProvider>
-            <div className="relative min-h-screen">
+            <div className="relative min-h-screen flex flex-col">
               <Navbar 
           currentPage={currentPage} 
           onPageChange={handlePageChange} 
           onCategoryFilter={handleCategoryFilter}
           onNavigateToFavorites={handleNavigateToFavorites}
         />
-              <PageTransition pageKey={currentPage}>
-                {renderPage()}
-              </PageTransition>
+              <main className="flex-1">
+                <PageTransition pageKey={currentPage}>
+                  {renderPage()}
+                </PageTransition>
+              </main>
+              <Footer onNavigateToFavorites={handleNavigateToFavorites} />
               <CartDrawer 
                 onNavigateToCart={handleNavigateToCart}
                 onNavigateToCheckout={handleNavigateToCheckout}

@@ -1,15 +1,12 @@
-import React from 'react';
 import ProductContainer from './ProductContainer';
 import InstagramGallery from './InstagramGallery';
-import Footer from './Footer';
 import { Product } from '../types/Product';
 
 interface HeroPageProps {
   onProductSelect?: (product: Product) => void;
-  onNavigateToFavorites?: () => void;
 }
 
-export default function HeroPage({ onProductSelect, onNavigateToFavorites }: HeroPageProps) {
+export default function HeroPage({ onProductSelect }: HeroPageProps) {
 
   return (
     <div className="font-sans text-gray-700 overflow-x-hidden">
@@ -30,7 +27,7 @@ export default function HeroPage({ onProductSelect, onNavigateToFavorites }: Her
         "https://www.instagram.com/p/DLuvQY_IgL2/?img_index=1"
       ]} />
 
-      <Footer onNavigateToFavorites={onNavigateToFavorites} />
+      {/* Footer is rendered globally in App.tsx */}
     </div>
   );
 }

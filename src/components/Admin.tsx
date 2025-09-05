@@ -1,13 +1,18 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Edit, Trash2, Save, X, Upload, Image as ImageIcon } from 'lucide-react';
 import { useProducts } from '../context/ProductContext';
 import { productService } from '../services/productService';
 import { storageService } from '../services/storageService';
 import { Product, ProductFormData } from '../types/Product';
+import { instagramService } from '../services/instagramService';
 
 const Admin: React.FC = () => {
   const { products, loading, error, refreshProducts } = useProducts();
+  const [activeTab, setActiveTab] = useState<'products' | 'discover' | 'instagram'>('products');
+  // Home Discover selection state
+  const [discoverSelection, setDiscoverSelection] = useState<string[]>([]);
+  const [savingDiscover, setSavingDiscover] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const createEmptyGrid = () => Array.from({ length: 5 }, () => Array(5).fill('')) as string[][];
@@ -20,6 +25,82 @@ const Admin: React.FC = () => {
       }
     }
     return base;
+  };
+
+  // Load existing Home Discover selection
+  useEffect(() => {
+    const loadSelection = async () => {
+      try {
+        const ids = await productService.getHomeDiscoverSelection();
+        setDiscoverSelection(ids.slice(0, 4));
+      } catch (e) {
+        console.warn('Failed to load home discover selection');
+      }
+    };
+    loadSelection();
+  }, []);
+
+  // Load Instagram posts when tab opens
+  useEffect(() => {
+    const loadIg = async () => {
+      if (activeTab !== 'instagram') return;
+      setIgLoading(true);
+      const rows = await instagramService.getPosts();
+      setIgPosts(rows.map(r => ({
+        id: r.id,
+        image: r.image,
+        link: r.link,
+        position: (r as any).position,
+        show_on_desktop: (r as any).show_on_desktop,
+        desktop_position: (r as any).desktop_position,
+        show_on_mobile: (r as any).show_on_mobile,
+        mobile_position: (r as any).mobile_position,
+      })));
+      setIgLoading(false);
+    };
+    loadIg();
+  }, [activeTab]);
+
+  const toggleDiscoverProduct = (id: string) => {
+    setDiscoverSelection(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(x => x !== id);
+      }
+      if (prev.length >= 4) {
+        alert('You can select up to 4 products for the Discover section.');
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
+
+  const moveDiscover = (id: string, direction: 'up' | 'down') => {
+    setDiscoverSelection(prev => {
+      const index = prev.indexOf(id);
+      if (index === -1) return prev;
+      const newArr = [...prev];
+      const swapWith = direction === 'up' ? index - 1 : index + 1;
+      if (swapWith < 0 || swapWith >= newArr.length) return prev;
+      [newArr[index], newArr[swapWith]] = [newArr[swapWith], newArr[index]];
+      return newArr;
+    });
+  };
+
+  const saveDiscoverSelection = async () => {
+    try {
+      setSavingDiscover(true);
+      const result = await productService.updateHomeDiscoverSelection(discoverSelection);
+      if (result.ok) {
+        alert('Discover selection saved.');
+        // Reload selection to confirm persisted order
+        const ids = await productService.getHomeDiscoverSelection();
+        setDiscoverSelection(ids.slice(0, 4));
+      } else {
+        alert(`Failed to save selection: ${result.error || 'Unknown error'}${result.status ? ` (HTTP ${result.status})` : ''}`);
+      }
+    } finally {
+      setSavingDiscover(false);
+    }
   };
 
   const [formData, setFormData] = useState<ProductFormData>({
@@ -36,6 +117,23 @@ const Admin: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<boolean[]>([]);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Instagram admin state
+  const [igPosts, setIgPosts] = useState<{
+    id: string;
+    image: string;
+    link: string;
+    position: number;
+    show_on_desktop?: boolean;
+    desktop_position?: number | null;
+    show_on_mobile?: boolean;
+    mobile_position?: number | null;
+  }[]>([]);
+  const [igLoading, setIgLoading] = useState(false);
+  const [igImage, setIgImage] = useState<string>('');
+  const [igLink, setIgLink] = useState<string>('');
+  const [igUploading, setIgUploading] = useState(false);
+  const [igSavingOrder, setIgSavingOrder] = useState(false);
 
   const resetForm = () => {
     setFormData({
@@ -293,19 +391,121 @@ const Admin: React.FC = () => {
   return (
     <div className="min-h-screen bg-white pt-20">
       <div className="max-w-7xl mx-auto px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-black">Product Admin</h1>
-          <button
-            onClick={() => setIsAddingProduct(true)}
-            className="flex items-center space-x-2 bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Product</span>
-          </button>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-black">Admin</h1>
+          {activeTab === 'products' && (
+            <button
+              onClick={() => setIsAddingProduct(true)}
+              className="flex items-center space-x-2 bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Product</span>
+            </button>
+          )}
         </div>
 
-        {/* Product Form */}
-        {isAddingProduct && (
+        {/* Tabs */}
+        <div className="mb-8 border-b border-gray-200">
+          <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`pb-3 border-b-2 ${activeTab === 'products' ? 'border-black text-black' : 'border-transparent text-gray-500 hover:text-black'}`}
+            >
+              Products
+            </button>
+            <button
+              onClick={() => setActiveTab('discover')}
+              className={`pb-3 border-b-2 ${activeTab === 'discover' ? 'border-black text-black' : 'border-transparent text-gray-500 hover:text-black'}`}
+            >
+              Home Discover
+            </button>
+            <button
+              onClick={() => setActiveTab('instagram')}
+              className={`pb-3 border-b-2 ${activeTab === 'instagram' ? 'border-black text-black' : 'border-transparent text-gray-500 hover:text-black'}`}
+            >
+              Instagram
+            </button>
+          </nav>
+        </div>
+
+        {/* Home Discover Selection */}
+        {activeTab === 'discover' && (
+        <div className="bg-gray-50 border border-gray-200 rounded mb-8">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-black">Home Discover Selection</h2>
+            <div className="text-sm text-gray-600">Selected: {discoverSelection.length} / 4</div>
+          </div>
+          <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Selected list with ordering */}
+            <div>
+              <h3 className="font-medium text-black mb-3">Selected (order matters)</h3>
+              {discoverSelection.length === 0 ? (
+                <div className="text-sm text-gray-500">No products selected yet.</div>
+              ) : (
+                <ul className="space-y-3">
+                  {discoverSelection.map((id, idx) => {
+                    const p = products.find(pr => pr.id === id);
+                    if (!p) return null;
+                    return (
+                      <li key={id} className="flex items-center justify-between p-3 border border-gray-200 rounded">
+                        <div className="flex items-center space-x-3">
+                          <img src={p.images?.[0]} alt={p.name} className="w-12 h-12 object-cover rounded" />
+                          <div>
+                            <div className="font-medium">{p.name}</div>
+                            <div className="text-xs text-gray-500">Position: {idx + 1}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button onClick={() => moveDiscover(id, 'up')} className="px-2 py-1 border rounded text-sm" disabled={idx === 0}>Up</button>
+                          <button onClick={() => moveDiscover(id, 'down')} className="px-2 py-1 border rounded text-sm" disabled={idx === discoverSelection.length - 1}>Down</button>
+                          <button onClick={() => toggleDiscoverProduct(id)} className="px-2 py-1 border border-red-300 text-red-600 rounded text-sm">Remove</button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <div className="mt-4">
+                <button onClick={saveDiscoverSelection} disabled={savingDiscover} className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors disabled:opacity-60">
+                  {savingDiscover ? 'Saving...' : 'Save Selection'}
+                </button>
+              </div>
+            </div>
+
+            {/* All products to choose from */}
+            <div>
+              <h3 className="font-medium text-black mb-3">Choose Products</h3>
+              {products.length === 0 ? (
+                <div className="text-sm text-gray-500">No products available.</div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {products.map(p => {
+                    const selected = discoverSelection.includes(p.id);
+                    return (
+                      <div key={p.id} className={`border rounded p-2 ${selected ? 'border-black' : 'border-gray-200'}`}>
+                        <div className="aspect-square overflow-hidden rounded mb-2">
+                          <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="text-xs font-medium mb-1 line-clamp-1">{p.name}</div>
+                        <button
+                          onClick={() => toggleDiscoverProduct(p.id)}
+                          disabled={!selected && discoverSelection.length >= 4}
+                          className={`w-full text-xs px-2 py-1 rounded border ${selected ? 'bg-black text-white border-black' : 'border-gray-300 hover:border-black'}`}
+                        >
+                          {selected ? 'Selected' : 'Select'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* Product Form (Products tab) */}
+        {activeTab === 'products' && isAddingProduct && (
           <div className="bg-gray-50 border border-black p-6 rounded mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">
@@ -630,57 +830,322 @@ const Admin: React.FC = () => {
                 </button>
               </div>
             </form>
+        </div>
+      )}
+
+        {activeTab === 'products' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-black">Products ({products.length})</h2>
+            {products.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                No products found. Add your first product to get started.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
+                  <div key={product.id} className="border border-gray-200 rounded p-4">
+                    <div className="aspect-square mb-4 overflow-hidden rounded">
+                      <img
+                        src={product.images[0] || '/assets/placeholder.jpg'}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
+                    <p className="text-gray-600 mb-2">${product.price}</p>
+                    <p className="text-sm text-gray-500 mb-2">Category: {product.category}</p>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Colors: {product.colors.map(c => c.name).join(', ')}
+                    </p>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEdit(product)}
+                        className="flex items-center space-x-1 px-3 py-2 border border-gray-300 rounded hover:border-black"
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="flex items-center space-x-1 px-3 py-2 border border-red-300 text-red-600 rounded hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Products List */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-black">Products ({products.length})</h2>
-          
-          {products.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              No products found. Add your first product to get started.
+      {activeTab === 'instagram' && (
+        <div className="space-y-6">
+          <div className="bg-gray-50 border border-gray-200 rounded p-4">
+            <h2 className="text-xl font-semibold text-black mb-4">Add Instagram Post</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              <div className="md:col-span-1">
+                <div className="w-full aspect-square border border-gray-300 rounded flex items-center justify-center overflow-hidden bg-white">
+                  {igImage ? (
+                    <img src={igImage} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageIcon className="w-12 h-12 text-gray-400" />
+                  )}
+                </div>
+              </div>
+              <div className="md:col-span-2 space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Instagram Link</label>
+                  <input
+                    type="url"
+                    value={igLink}
+                    onChange={(e) => setIgLink(e.target.value)}
+                    placeholder="https://www.instagram.com/p/..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-black"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const validation = storageService.validateImage(file);
+                      if (!validation.valid) { alert(validation.error); return; }
+                      try {
+                        setIgUploading(true);
+                        const dataUrl = await storageService.uploadImage(file, `ig_${Date.now()}`);
+                        setIgImage(dataUrl);
+                      } finally {
+                        setIgUploading(false);
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!igImage || !igLink) { alert('Please provide an image and link'); return; }
+                      const res = await instagramService.addPost(igImage, igLink);
+                      if (!res.ok) { alert(`Failed to add: ${res.error || 'Unknown error'}`); return; }
+                      setIgImage('');
+                      setIgLink('');
+                      const rows = await instagramService.getPosts();
+                      setIgPosts(rows.map(r => ({
+                        id: r.id,
+                        image: r.image,
+                        link: r.link,
+                        position: (r as any).position,
+                        show_on_desktop: (r as any).show_on_desktop,
+                        desktop_position: (r as any).desktop_position,
+                        show_on_mobile: (r as any).show_on_mobile,
+                        mobile_position: (r as any).mobile_position,
+                      })));
+                      alert('Instagram post added');
+                    }}
+                    className="px-4 py-2 bg-black text-white rounded disabled:opacity-60"
+                    disabled={igUploading}
+                  >
+                    {igUploading ? 'Uploading...' : 'Save Post'}
+                  </button>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => (
-                <div key={product.id} className="border border-gray-200 rounded p-4">
-                  <div className="aspect-square mb-4 overflow-hidden rounded">
-                    <img
-                      src={product.images[0] || '/assets/placeholder.jpg'}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  
-                  <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
-                  <p className="text-gray-600 mb-2">${product.price}</p>
-                  <p className="text-sm text-gray-500 mb-2">Category: {product.category}</p>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Colors: {product.colors.map(c => c.name).join(', ')}
-                  </p>
-                  
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEdit(product)}
-                      className="flex items-center space-x-1 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                    >
-                      <Edit className="w-3 h-3" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="flex items-center space-x-1 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      <span>Delete</span>
-                    </button>
+          </div>
+
+          {/* Desktop Featured Manager */}
+          <div className="bg-gray-50 border border-gray-200 rounded p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-black">Desktop Featured (3)</h2>
+              <button
+                onClick={async () => {
+                  setIgSavingOrder(true);
+                  const featured = igPosts
+                    .filter(p => p.show_on_desktop)
+                    .sort((a, b) => (a.desktop_position ?? 0) - (b.desktop_position ?? 0));
+                  if (featured.length !== 3) { alert('Select exactly 3 posts for Desktop before saving.'); setIgSavingOrder(false); return; }
+                  const ok = await instagramService.reorder('desktop', featured.map(p => p.id));
+                  setIgSavingOrder(false);
+                  if (!ok) alert('Failed to save desktop order');
+                  else alert('Desktop order saved');
+                }}
+                className="px-3 py-2 border border-gray-300 rounded hover:border-black disabled:opacity-60"
+                disabled={igSavingOrder}
+              >
+                {igSavingOrder ? 'Saving...' : 'Save Order'}
+              </button>
+            </div>
+            {igLoading ? (
+              <div className="text-gray-500">Loading...</div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Featured list with reorder */}
+                <div>
+                  <h3 className="font-medium text-black mb-3">Featured (3)</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {igPosts
+                      .filter(p => p.show_on_desktop)
+                      .sort((a, b) => (a.desktop_position ?? 0) - (b.desktop_position ?? 0))
+                      .map((p, idx, arr) => (
+                        <div key={p.id} className="border border-gray-200 rounded overflow-hidden">
+                          <div className="aspect-square bg-white">
+                            <img src={p.image} alt="IG" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="p-2 space-y-2">
+                            <a href={p.link} target="_blank" rel="noopener noreferrer" className="block text-xs text-blue-600 truncate">{p.link}</a>
+                            <div className="flex items-center justify-between">
+                              <div className="space-x-2">
+                                <button onClick={() => {
+                                  if (idx === 0) return;
+                                  const ids = arr.map(x => x.id);
+                                  [ids[idx-1], ids[idx]] = [ids[idx], ids[idx-1]];
+                                  const mapping: Record<string, number> = {};
+                                  ids.forEach((id, i) => { mapping[id] = i; });
+                                  setIgPosts(prev => prev.map(it => it.id in mapping ? { ...it, show_on_desktop: true, desktop_position: mapping[it.id] } : it));
+                                }} className="text-xs px-2 py-1 border rounded" disabled={idx === 0}>Up</button>
+                                <button onClick={() => {
+                                  if (idx === arr.length - 1) return;
+                                  const ids = arr.map(x => x.id);
+                                  [ids[idx+1], ids[idx]] = [ids[idx], ids[idx+1]];
+                                  const mapping: Record<string, number> = {};
+                                  ids.forEach((id, i) => { mapping[id] = i; });
+                                  setIgPosts(prev => prev.map(it => it.id in mapping ? { ...it, show_on_desktop: true, desktop_position: mapping[it.id] } : it));
+                                }} className="text-xs px-2 py-1 border rounded" disabled={idx === arr.length - 1}>Down</button>
+                              </div>
+                              <button onClick={async () => {
+                                const ok = await instagramService.toggleFeatured(p.id, 'desktop', false);
+                                if (!ok) { alert('Failed to remove from Desktop'); return; }
+                                setIgPosts(prev => prev.map(it => it.id === p.id ? { ...it, show_on_desktop: false, desktop_position: null } : it));
+                              }} className="text-xs px-2 py-1 border border-red-300 text-red-600 rounded">Remove</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 </div>
-              ))}
+                {/* Available */}
+                <div>
+                  <h3 className="font-medium text-black mb-3">Available</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {igPosts.filter(p => !p.show_on_desktop).map(p => (
+                      <div key={p.id} className="border border-gray-200 rounded overflow-hidden">
+                        <div className="aspect-square bg-white">
+                          <img src={p.image} alt="IG" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="p-2 space-y-2">
+                          <a href={p.link} target="_blank" rel="noopener noreferrer" className="block text-xs text-blue-600 truncate">{p.link}</a>
+                          <button onClick={async () => {
+                            const featuredCount = igPosts.filter(x => x.show_on_desktop).length;
+                            if (featuredCount >= 3) { alert('Desktop can only have 3 posts'); return; }
+                            const ok = await instagramService.toggleFeatured(p.id, 'desktop', true);
+                            if (ok) setIgPosts(prev => prev.map(it => it.id === p.id ? { ...it, show_on_desktop: true, desktop_position: featuredCount } : it));
+                          }} className="text-xs px-2 py-1 border rounded">Add to Desktop</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Featured Manager */}
+          <div className="bg-gray-50 border border-gray-200 rounded p-4 mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-black">Mobile Featured (4)</h2>
+              <button
+                onClick={async () => {
+                  setIgSavingOrder(true);
+                  const featured = igPosts
+                    .filter(p => p.show_on_mobile)
+                    .sort((a, b) => (a.mobile_position ?? 0) - (b.mobile_position ?? 0));
+                  if (featured.length !== 4) { alert('Select exactly 4 posts for Mobile before saving.'); setIgSavingOrder(false); return; }
+                  const ok = await instagramService.reorder('mobile', featured.map(p => p.id));
+                  setIgSavingOrder(false);
+                  if (!ok) alert('Failed to save mobile order');
+                  else alert('Mobile order saved');
+                }}
+                className="px-3 py-2 border border-gray-300 rounded hover:border-black disabled:opacity-60"
+                disabled={igSavingOrder}
+              >
+                {igSavingOrder ? 'Saving...' : 'Save Order'}
+              </button>
             </div>
-          )}
+            {igLoading ? (
+              <div className="text-gray-500">Loading...</div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Featured list with reorder */}
+                <div>
+                  <h3 className="font-medium text-black mb-3">Featured (4)</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {igPosts
+                      .filter(p => p.show_on_mobile)
+                      .sort((a, b) => (a.mobile_position ?? 0) - (b.mobile_position ?? 0))
+                      .map((p, idx, arr) => (
+                        <div key={p.id} className="border border-gray-200 rounded overflow-hidden">
+                          <div className="aspect-square bg-white">
+                            <img src={p.image} alt="IG" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="p-2 space-y-2">
+                            <a href={p.link} target="_blank" rel="noopener noreferrer" className="block text-xs text-blue-600 truncate">{p.link}</a>
+                            <div className="flex items-center justify-between">
+                              <div className="space-x-2">
+                                <button onClick={() => {
+                                  if (idx === 0) return;
+                                  const ids = arr.map(x => x.id);
+                                  [ids[idx-1], ids[idx]] = [ids[idx], ids[idx-1]];
+                                  const mapping: Record<string, number> = {};
+                                  ids.forEach((id, i) => { mapping[id] = i; });
+                                  setIgPosts(prev => prev.map(it => it.id in mapping ? { ...it, show_on_mobile: true, mobile_position: mapping[it.id] } : it));
+                                }} className="text-xs px-2 py-1 border rounded" disabled={idx === 0}>Up</button>
+                                <button onClick={() => {
+                                  if (idx === arr.length - 1) return;
+                                  const ids = arr.map(x => x.id);
+                                  [ids[idx+1], ids[idx]] = [ids[idx], ids[idx+1]];
+                                  const mapping: Record<string, number> = {};
+                                  ids.forEach((id, i) => { mapping[id] = i; });
+                                  setIgPosts(prev => prev.map(it => it.id in mapping ? { ...it, show_on_mobile: true, mobile_position: mapping[it.id] } : it));
+                                }} className="text-xs px-2 py-1 border rounded" disabled={idx === arr.length - 1}>Down</button>
+                              </div>
+                              <button onClick={async () => {
+                                const ok = await instagramService.toggleFeatured(p.id, 'mobile', false);
+                                if (!ok) { alert('Failed to remove from Mobile'); return; }
+                                setIgPosts(prev => prev.map(it => it.id === p.id ? { ...it, show_on_mobile: false, mobile_position: null } : it));
+                              }} className="text-xs px-2 py-1 border border-red-300 text-red-600 rounded">Remove</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                {/* Available */}
+                <div>
+                  <h3 className="font-medium text-black mb-3">Available</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {igPosts.filter(p => !p.show_on_mobile).map(p => (
+                      <div key={p.id} className="border border-gray-200 rounded overflow-hidden">
+                        <div className="aspect-square bg-white">
+                          <img src={p.image} alt="IG" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="p-2 space-y-2">
+                          <a href={p.link} target="_blank" rel="noopener noreferrer" className="block text-xs text-blue-600 truncate">{p.link}</a>
+                          <button onClick={async () => {
+                            const featuredCount = igPosts.filter(x => x.show_on_mobile).length;
+                            if (featuredCount >= 4) { alert('Mobile can only have 4 posts'); return; }
+                            const ok = await instagramService.toggleFeatured(p.id, 'mobile', true);
+                            if (ok) setIgPosts(prev => prev.map(it => it.id === p.id ? { ...it, show_on_mobile: true, mobile_position: featuredCount } : it));
+                          }} className="text-xs px-2 py-1 border rounded">Add to Mobile</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+      )}
       </div>
     </div>
   );

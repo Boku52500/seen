@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, ShoppingBag } from 'lucide-react';
 import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
 import { useAuth } from '../context/AuthContext';
 import { Product } from '../types/Product';
+import { productService } from '../services/productService';
 
 interface ProductContainerProps {
   onProductSelect?: (product: Product) => void;
@@ -21,6 +22,7 @@ export default function ProductContainer({ onProductSelect }: ProductContainerPr
   const [currentImageIndex, setCurrentImageIndex] = useState<{ [key: string]: number }>({});
   const [loadingFavorites, setLoadingFavorites] = useState<{ [key: string]: boolean }>({});
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [displayProducts, setDisplayProducts] = useState<Product[]>([]);
   const sliderRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
@@ -148,30 +150,77 @@ export default function ProductContainer({ onProductSelect }: ProductContainerPr
     setCurrentSlide(index);
   };
 
-  const nextSlide = () => {
-    if (currentSlide < displayProducts.length - 1) {
-      setCurrentSlide(prev => prev + 1);
-    }
-  };
-
-  const prevSlide = () => {
-    if (currentSlide > 0) {
-      setCurrentSlide(prev => prev - 1);
-    }
-  };
+  // next/prev slide functions removed (unused)
 
   // Auto-scroll effect for mobile
   useEffect(() => {
-    if (window.innerWidth < 768 && products.length > 0) {
+    if (window.innerWidth < 768 && displayProducts.length > 0) {
       const interval = setInterval(() => {
         setCurrentSlide(prev => 
-          prev >= Math.min(products.length, 4) - 1 ? 0 : prev + 1
+          prev >= Math.min(displayProducts.length, 4) - 1 ? 0 : prev + 1
         );
       }, 5000);
       
       return () => clearInterval(interval);
     }
-  }, [products.length]);
+  }, [displayProducts.length]);
+
+  // Load cached Discover products immediately to avoid empty flash
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('homeDiscoverCache');
+      if (raw) {
+        const cached: Product[] = JSON.parse(raw);
+        if (Array.isArray(cached) && cached.length > 0) {
+          setDisplayProducts(cached.slice(0, 4));
+          setCurrentSlide(0);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Fetch selected Discover products; show immediate fallback then swap in selection
+  useEffect(() => {
+    let isCancelled = false;
+    const loadDiscover = async () => {
+      try {
+        // Immediate fallback to avoid empty state; do not overwrite if we already have cached content
+        if (!isCancelled) {
+          setDisplayProducts(prev => (prev && prev.length > 0) ? prev : products.slice(0, 4));
+        }
+
+        // Fetch only selection IDs (small, fast)
+        const selectedIds = await productService.getHomeDiscoverSelection();
+
+        if (!isCancelled) {
+          if (selectedIds && selectedIds.length > 0) {
+            // Build selection from already-fetched products to avoid extra network latency
+            const ordered = selectedIds
+              .map(id => products.find(p => p.id === id))
+              .filter((p): p is Product => Boolean(p));
+
+            // Only update if we actually found products; otherwise keep fallback
+            if (ordered.length > 0) {
+              setDisplayProducts(ordered.slice(0, 4));
+              try { localStorage.setItem('homeDiscoverCache', JSON.stringify(ordered.slice(0, 4))); } catch {}
+            } else {
+              // If mapping fails (e.g., context not ready), fetch full product objects as a backup
+              const selectedFull = await productService.getHomeDiscoverProducts();
+              if (selectedFull && selectedFull.length > 0) {
+                setDisplayProducts(selectedFull.slice(0, 4));
+                try { localStorage.setItem('homeDiscoverCache', JSON.stringify(selectedFull.slice(0, 4))); } catch {}
+              }
+            }
+          }
+          setCurrentSlide(0);
+        }
+      } catch (e) {
+        // Keep fallback silently on error
+      }
+    };
+    loadDiscover();
+    return () => { isCancelled = true; };
+  }, [products]);
 
   // Skeleton card component for loading state
   const SkeletonCard = () => (
@@ -336,22 +385,32 @@ export default function ProductContainer({ onProductSelect }: ProductContainerPr
     );
   }
 
-  // Show empty state
-  if (!products || products.length === 0) {
+  // Show skeletons while both product list and display list are empty
+  if ((!products || products.length === 0) && displayProducts.length === 0) {
     return (
       <div className="bg-white w-full">
         <div className="flex justify-center py-8 border-b border-gray-200">
           <h1 className="text-4xl font-bold uppercase tracking-wide">Discover</h1>
         </div>
-        <div className="flex justify-center items-center py-16">
-          <div className="text-lg text-gray-500">No products available</div>
+        <div className="py-8 px-4">
+          <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+          <div className="md:hidden">
+            <div className="space-y-6">
+              {[...Array(2)].map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Limit to first 4 products for homepage display
-  const displayProducts = products.slice(0, 4);
+  // displayProducts is derived from admin selection or fallback above
 
 
 

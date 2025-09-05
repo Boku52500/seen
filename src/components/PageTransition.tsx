@@ -65,10 +65,10 @@ const PageTransition: React.FC<PageTransitionProps> = ({ children, pageKey }) =>
     <div 
       ref={containerRef}
       className="relative w-full"
-      style={{ minHeight: '100vh' }}
+      style={{ minHeight: '50vh' }}
     >
       <div 
-        className={`absolute inset-0 w-full transition-all duration-300 ease-out ${
+        className={`transition-all duration-300 ease-out ${
           isExiting 
             ? 'opacity-0 transform translate-y-4 scale-[0.98]' 
             : isEntering

@@ -24,6 +24,48 @@ if (!DATABASE_URL) {
 
 const sql = neon(DATABASE_URL);
 
+// Ensure auxiliary tables exist (idempotent)
+const ensureHomeSelectionsTable = async () => {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS home_selections (
+      product_id uuid PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
+      position integer NOT NULL,
+      created_at timestamp DEFAULT now()
+    );`;
+  } catch (err) {
+    console.error('Error ensuring home_selections table exists:', err);
+  }
+};
+
+// Run table ensure on startup (non-blocking)
+(async () => {
+  await ensureHomeSelectionsTable();
+})();
+
+// Instagram posts table ensure
+const ensureInstagramPostsTable = async () => {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS instagram_posts (
+      id uuid PRIMARY KEY,
+      image text NOT NULL,
+      link text NOT NULL,
+      position integer NOT NULL,
+      created_at timestamp DEFAULT now()
+    );`;
+    // Add new columns for desktop/mobile featured selections if they don't exist
+    try { await sql`ALTER TABLE instagram_posts ADD COLUMN IF NOT EXISTS show_on_desktop boolean DEFAULT false`; } catch {}
+    try { await sql`ALTER TABLE instagram_posts ADD COLUMN IF NOT EXISTS desktop_position integer`; } catch {}
+    try { await sql`ALTER TABLE instagram_posts ADD COLUMN IF NOT EXISTS show_on_mobile boolean DEFAULT false`; } catch {}
+    try { await sql`ALTER TABLE instagram_posts ADD COLUMN IF NOT EXISTS mobile_position integer`; } catch {}
+  } catch (err) {
+    console.error('Error ensuring instagram_posts table exists:', err);
+  }
+};
+
+(async () => {
+  await ensureInstagramPostsTable();
+})();
+
 // JWT secret
 const JWT_SECRET = process.env.SESSION_SECRET || 'your-secret-key-change-this-in-production';
 
@@ -81,6 +123,177 @@ app.get('/health', (req, res) => {
 // Alias so it works when called via Vercel /api/*
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
+});
+
+// Helper to require admin
+const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({ error: 'Admin privileges required' });
+  }
+  next();
+};
+
+// Home Discover selection endpoints
+// Get selected product IDs with positions
+app.get('/api/home-discover', async (req, res) => {
+  try {
+    const rows = await sql`SELECT product_id, position FROM home_selections ORDER BY position ASC`;
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching home discover selection:', error);
+    res.status(500).json({ error: 'Failed to fetch home discover selection' });
+  }
+});
+
+// Get selected products (full objects) in order
+app.get('/api/home-discover/products', async (req, res) => {
+  try {
+    const rows = await sql`SELECT p.* FROM home_selections s JOIN products p ON p.id = s.product_id WHERE p.is_active = true ORDER BY s.position ASC`;
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching home discover products:', error);
+    res.status(500).json({ error: 'Failed to fetch home discover products' });
+  }
+});
+
+// Update selection (admin only)
+app.put('/api/home-discover', async (req, res) => {
+  try {
+    // Ensure table exists (handles cold start or race conditions)
+    await ensureHomeSelectionsTable();
+    const { productIds } = req.body;
+    if (!Array.isArray(productIds)) {
+      return res.status(400).json({ error: 'productIds must be an array' });
+    }
+    if (productIds.length > 4) {
+      return res.status(400).json({ error: 'You can select up to 4 products for the Discover section' });
+    }
+
+    // Clear current selection
+    await sql`DELETE FROM home_selections`;
+    // Insert new selection with order
+    for (let i = 0; i < productIds.length; i++) {
+      const id = productIds[i];
+      await sql`INSERT INTO home_selections (product_id, position) VALUES (${id}, ${i}) ON CONFLICT (product_id) DO UPDATE SET position = EXCLUDED.position`;
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating home discover selection:', error);
+    res.status(500).json({ error: 'Failed to update home discover selection' });
+  }
+});
+
+// Instagram Posts Endpoints (top-level)
+// List posts in order
+app.get('/api/instagram-posts', async (req, res) => {
+  try {
+    const rows = await sql`SELECT id, image, link, position, show_on_desktop, desktop_position, show_on_mobile, mobile_position FROM instagram_posts ORDER BY position ASC`;
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching instagram posts:', error);
+    res.status(500).json({ error: 'Failed to fetch instagram posts' });
+  }
+});
+
+// Add a post (expects id provided by client)
+app.post('/api/instagram-posts', async (req, res) => {
+  try {
+    await ensureInstagramPostsTable();
+    const { id, image, link } = req.body;
+    if (!id || !image || !link) {
+      return res.status(400).json({ error: 'id, image, and link are required' });
+    }
+    // Compute next position
+    const nextPosRows = await sql`SELECT COALESCE(MAX(position) + 1, 0) AS next FROM instagram_posts`;
+    const next = Array.isArray(nextPosRows) ? nextPosRows[0]?.next ?? 0 : 0;
+    await sql`INSERT INTO instagram_posts (id, image, link, position) VALUES (${id}, ${image}, ${link}, ${next})`;
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error('Error adding instagram post:', error);
+    res.status(500).json({ error: 'Failed to add instagram post' });
+  }
+});
+
+// Reorder posts: set positions based on array order
+app.put('/api/instagram-posts/reorder', async (req, res) => {
+  try {
+    const { surface, ids } = req.body;
+    if (surface !== 'desktop' && surface !== 'mobile') {
+      return res.status(400).json({ error: "surface must be 'desktop' or 'mobile'" });
+    }
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ error: 'ids must be an array' });
+    }
+    // Enforce desired counts: desktop 3, mobile 4
+    const expected = surface === 'desktop' ? 3 : 4;
+    if (ids.length !== expected) {
+      return res.status(400).json({ error: `Expected ${expected} ids for ${surface}` });
+    }
+
+    // Reset all flags/positions for this surface
+    if (surface === 'desktop') {
+      await sql`UPDATE instagram_posts SET show_on_desktop = false, desktop_position = NULL`;
+      for (let i = 0; i < ids.length; i++) {
+        await sql`UPDATE instagram_posts SET show_on_desktop = true, desktop_position = ${i} WHERE id = ${ids[i]}`;
+      }
+    } else {
+      await sql`UPDATE instagram_posts SET show_on_mobile = false, mobile_position = NULL`;
+      for (let i = 0; i < ids.length; i++) {
+        await sql`UPDATE instagram_posts SET show_on_mobile = true, mobile_position = ${i} WHERE id = ${ids[i]}`;
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error reordering instagram posts:', error);
+    res.status(500).json({ error: 'Failed to reorder instagram posts' });
+  }
+});
+
+// Toggle featured flags and/or set specific positions for a given post
+app.patch('/api/instagram-posts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { show_on_desktop, desktop_position, show_on_mobile, mobile_position } = req.body;
+
+    // Build dynamic updates based on provided fields
+    const updates = [];
+    if (typeof show_on_desktop === 'boolean') updates.push(sql`show_on_desktop = ${show_on_desktop}`);
+    if (typeof desktop_position === 'number' || desktop_position === null) updates.push(sql`desktop_position = ${desktop_position}`);
+    if (typeof show_on_mobile === 'boolean') updates.push(sql`show_on_mobile = ${show_on_mobile}`);
+    if (typeof mobile_position === 'number' || mobile_position === null) updates.push(sql`mobile_position = ${mobile_position}`);
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    // Join updates into a single SET clause
+    const setClause = updates.reduce((prev, curr, idx) => idx === 0 ? curr : sql`${prev}, ${curr}`);
+    const result = await sql`UPDATE instagram_posts SET ${setClause} WHERE id = ${id} RETURNING id`;
+    if (!result || result.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating instagram post flags:', error);
+    res.status(500).json({ error: 'Failed to update instagram post' });
+  }
+});
+
+// Delete post
+app.delete('/api/instagram-posts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await sql`DELETE FROM instagram_posts WHERE id = ${id} RETURNING id`;
+    if (!result || result.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting instagram post:', error);
+    res.status(500).json({ error: 'Failed to delete instagram post' });
+  }
 });
 
 // Authentication endpoints

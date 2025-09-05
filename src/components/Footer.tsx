@@ -98,12 +98,13 @@ export default function Footer({ onNavigateToFavorites }: FooterProps) {
         <div className="border-t border-gray-600 mt-8 sm:mt-12 pt-6 sm:pt-8">
           <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
             <p className="text-gray-400 text-xs sm:text-sm text-center sm:text-left">
-              &copy; 2025 OddMuse. All rights reserved.
+              &copy; 2025 Seen Studios. All rights reserved.
             </p>
             <div className="flex flex-wrap justify-center sm:justify-end space-x-4 sm:space-x-6 text-xs sm:text-sm">
-              <a href="#" className="text-black-400 hover:text-gray-400 transition-colors duration-300">Privacy Policy</a>
-              <a href="#" className="text-black-400 hover:text-gray-400 transition-colors duration-300">Terms of Service</a>
-              <a href="#" className="text-black-400 hover:text-gray-400 transition-colors duration-300">Returns</a>
+              <a href="/privacy-policy" className="text-black-400 hover:text-gray-400 transition-colors duration-300">Privacy Policy</a>
+              <a href="/terms" className="text-black-400 hover:text-gray-400 transition-colors duration-300">Terms of Service</a>
+              <a href="/returns" className="text-black-400 hover:text-gray-400 transition-colors duration-300">Returns</a>
+              <a href="/shipping" className="text-black-400 hover:text-gray-400 transition-colors duration-300">Shipping</a>
             </div>
           </div>
         </div>

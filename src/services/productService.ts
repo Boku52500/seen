@@ -160,4 +160,60 @@ export const productService = {
       return []; // Return empty array instead of throwing error
     }
   },
+
+  // Home Discover selection: get selected product IDs (ordered)
+  getHomeDiscoverSelection: async (): Promise<string[]> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/home-discover`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const rows: Array<{ product_id: string; position: number }> = await response.json();
+      return rows
+        .sort((a, b) => a.position - b.position)
+        .map((r) => r.product_id);
+    } catch (error) {
+      console.error('Error fetching home discover selection:', error);
+      return [];
+    }
+  },
+
+  // Home Discover: update selection (overwrite existing)
+  updateHomeDiscoverSelection: async (productIds: string[]): Promise<{ ok: boolean; status: number; error?: string }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/home-discover`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productIds }),
+      });
+      if (!response.ok) {
+        const raw = await response.text();
+        let msg = raw;
+        try {
+          const parsed = JSON.parse(raw);
+          msg = parsed.error || raw;
+        } catch {}
+        return { ok: false, status: response.status, error: msg };
+      }
+      return { ok: true, status: response.status };
+    } catch (error) {
+      console.error('Error updating home discover selection:', error);
+      return { ok: false, status: 0, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  },
+
+  // Home Discover: get selected products (full objects) in order
+  getHomeDiscoverProducts: async (): Promise<Product[]> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/home-discover/products`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const products = await response.json();
+      return products;
+    } catch (error) {
+      console.error('Error fetching home discover products:', error);
+      return [];
+    }
+  },
 };
